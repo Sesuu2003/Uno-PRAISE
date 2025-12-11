@@ -1,5 +1,5 @@
 # PRAISE
-
+![UNO PRAISE logo](https://github.com/Sesuu2003/Uno-PRAISE/blob/main/UNO%20PRAISE%20LOGO.png?raw=true)
 ## Overview
 
 **PRAISE** (**P**ython **R**emote **A**gents **I**n **S**imulated **E**nvironments) is a Python framework designed to implement and study the **Agent** concept from Artificial Intelligence within a **distributed client-server architecture**. It provides a robust framework for running AI agents that are completely **independent** of the simulated environment, communicating all actions and observations remotely.
