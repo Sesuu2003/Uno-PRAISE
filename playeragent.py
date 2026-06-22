@@ -35,12 +35,12 @@ class MoverActuator(SimulatedActuator):
 
 class CardPlayerActuator(SimulatedActuator):
 
-    def act(self, direction: MoveDirection = MoveDirection.RIGHT):
+    def act(self, carta):
         self._env.take_action(self._agent.id, "play_card")
         
 class CardDrawerActuator(SimulatedActuator):
 
-    def act(self, direction: MoveDirection = MoveDirection.RIGHT):
+    def act(self, pila_descartes):
         self._env.take_action(self._agent.id, "give_card")
         
 class PlayerAgent(Agent):
