@@ -72,20 +72,29 @@ class PlayerAgent(Agent):
 
 
     def function(self, percept):
+        action = {}
         #recibir turno
         #escanear pila descarte
         #escanear mano
-
         #jugar o pedir
-        #pasar turno}
+        card = self.compareCard(self, card, percept)
+        if card != None:
+            action["name"] = "play"
+            action["params"] = card
+        else:
+        #pasar turno
+            action["name"] = "pass"
+
         return action
 
     def compareCard(self, card, percept):
+        mano = percept["hand"]
         for c in mano:
             if (card[0] == c[0] or card[1] == c[1]):
-                print(carta, "coincide con ", c )
-                break;
-        
+                return c
+            else:
+                return None
+
             
     
     def _percecive(self):
@@ -94,7 +103,10 @@ class PlayerAgent(Agent):
             percept[sensor] = self._sensors[sensor].sense()
         return percept
 
-    def _act(self, percept)
+    def _act(self, percept):
+        action = self.function(percept)
+        action_actuators = {}
+
         
     def behave(self):
         percept = self._perceive()
