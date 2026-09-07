@@ -1,107 +1,102 @@
-from environments import SimulatedSensor, SimulatedActuator, SimulatedEnvironment
 from agents import Agent
-from random import randrange
+from environments import SimulatedSensor, SimulatedActuator, SimulatedEnvironment
+import uuid
 
+# Temporalmente descartada 
+# (¿Es necesario que el agente sepa que es su turno?
+#  ¿o se lo indica el entorno?)
 class TurnSensor(SimulatedSensor):
-
     def sense(self):
         response = self._env.get_property(self._agent.id, property_name="turn")
         return response["turn"]
 
 class DiscardPileSensor(SimulatedSensor):
-
     def sense(self):
-        response = self._env.get_property(self._agent.id, property_name="top_discard")
-        return response["top_discard"]
-    
-class HandSensor(SimulatedSensor):
+        response = self._env.get_property(self._agent.id, property_name="TopDiscard")
+        return response["TopDiscard"]
 
+class HandSensor(SimulatedSensor):
     def sense(self):
         response = self._env.get_property(self._agent.id, property_name="hand")
         return response["hand"]
 
-from enum import Enum, unique
+class CardDrawer(SimulatedActuator):
+    def act(self):
+        self._env.take_action(self._agent.id, "draw")
+
+
+class CardPlayer(SimulatedActuator):
+    def act(self, card):
+        self._env.take_action(self._agent.id, "play", card)
+
+class TurnPasser(SimulatedActuator):
+    def act(self):
+        self._env.take_action(self._agent.id, "pass")
 
 @unique
-class MoveDirection(Enum):
-    LEFT = -1
-    RIGHT = 1
+class CardColor(Enum):
+    RED = 1
+    BLUE = 2
+    GREEN = 3
+    YELLOW = 4
 
-class MoverActuator(SimulatedActuator):
+class ColorDeclarer(SimulatedActuator):
+    def act(self, color: CardColor):
+        self._env.take_action(self._agent.id, "declareColor", color)
 
-    def act(self, direction: MoveDirection = MoveDirection.RIGHT):
-        request_info = {"direction": ("right" if direction is MoveDirection.RIGHT else "left")}
-        self._env.take_action(self._agent.id, "move", request_info)
 
-class CardPlayerActuator(SimulatedActuator):
-
-    def act(self, carta):
-        self._env.take_action(self._agent.id, "play_card")
-        
-class CardDrawerActuator(SimulatedActuator):
-
-    def act(self, pila_descartes):
-        self._env.take_action(self._agent.id, "give_card")
-        
 class PlayerAgent(Agent):
+    def __init__(self, env: SimulatedEnvironment):
+       super().__init__()
+       env.add(self.id)
+
+       discardPile = DiscardPileSensor(env)
+       discardPile.agent = self
+       self.add_sensor("discardPile", discardPile)
+
+       hand = HandSensor(env)
+       hand.agent = self
+       self.add_sensor("hand", hand)
+
+       drawer = CardDrawer(env)
+       drawer.agent = self
+       self.add_actuator("drawer", drawer)
+
+       player = CardPlayer(env)
+       player.agent = self
+       self.add_actuator("player", player)
+
+       passTurn = TurnPasser(env)
+       passTurn.agent = self
+       self.add_actuator("passTurn", passTurn)
+
 
     def function(self, percept):
-        directions = [MoveDirection.RIGHT, MoveDirection.LEFT]
-        action = {}
-        if percept["dirt_sensor"]:
-            action["name"] = "clean"
-        else:
-            choice = randrange(2)
-            action["name"] = "move"
-            action["params"] = {"direction": directions[choice]}
+        #recibir turno
+        #escanear pila descarte
+        #escanear mano
+
+        #jugar o pedir
+        #pasar turno}
         return action
 
-    def __init__(self, env: SimulatedEnvironment):
-        super().__init__()
-        env.add(self.id)
-
-        mover = MoverActuator(env)
-        mover.agent = self
-        self.add_actuator("mover", mover)
-
-        cleaner = CleanerActuator(env)
-        cleaner.agent = self
-        self.add_actuator("cleaner", cleaner)
-
-        locator = LocationSensor(env)
-        locator.agent = self
-        self.add_sensor("location_sensor", locator)
-
-        dirt_sensor = DirtSensor(env)
-        dirt_sensor.agent = self
-        self.add_sensor("dirt_sensor", dirt_sensor)
-
-        # self.setup_function()
-
-    def print_state(self):
-        print("Estoy en la posición {} y la celda está {}".format(self._sensors["location_sensor"].sense(),
-                                                                  "Sucia" if self._sensors[
-                                                                      "dirt_sensor"].sense() else "Limpia"))
-
-    def _perceive(self):
+    def compareCard(self, card, percept):
+        for c in mano:
+            if (card[0] == c[0] or card[1] == c[1]):
+                print(carta, "coincide con ", c )
+                break;
+        
+            
+    
+    def _percecive(self):
         percept = {}
         for sensor in self._sensors:
             percept[sensor] = self._sensors[sensor].sense()
         return percept
 
-    def _act(self, percept):
-        action = self.function(percept)
-
-        action_actuators = {
-            "move": (self._actuators["mover"], ["direction"]),
-            "clean": (self._actuators["cleaner"], [])
-        }
-
-        actuator, expected_params = action_actuators.get(action["name"], (None, None))
-        if actuator:
-            args = [action["params"].get(param) for param in expected_params]
-            actuator.act(*args)
-
+    def _act(self, percept)
+        
     def behave(self):
         percept = self._perceive()
         self._act(percept)
+
