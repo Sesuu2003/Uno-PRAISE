@@ -33,6 +33,9 @@ class TurnPasser(SimulatedActuator):
     def act(self):
         self._env.take_action(self._agent.id, "pass")
 
+
+
+from enum import Enum, unique
 @unique
 class CardColor(Enum):
     RED = 1
@@ -71,32 +74,25 @@ class PlayerAgent(Agent):
        self.add_actuator("passTurn", passTurn)
 
 
-    def function(self, percept):
-        action = {}
-        #recibir turno
-        #escanear pila descarte
-        #escanear mano
-        #jugar o pedir
-        card = self.compareCard(self, card, percept)
-        if card != None:
-            action["name"] = "play"
-            action["params"] = card
-        else:
-        #pasar turno
-            action["name"] = "pass"
-
-        return action
-
-    def compareCard(self, card, percept):
+    def compareCard(self, percept):
         mano = percept["hand"]
+        card = percept["discardPile"]
         for c in mano:
             if (card[0] == c[0] or card[1] == c[1]):
                 return c
             else:
                 return None
-
             
-    
+    def function(self, percept):
+        action = {}
+        card = self.compareCard(self, percept)
+        if card != None:
+            action["name"] = "play"
+            action["params"] = {"card": card}
+        else:
+            action["name"] = "draw"
+        return action
+                
     def _percecive(self):
         percept = {}
         for sensor in self._sensors:
@@ -105,9 +101,14 @@ class PlayerAgent(Agent):
 
     def _act(self, percept):
         action = self.function(percept)
-        action_actuators = {}
-
-        
+        action_actuators = {
+            "play": (self._actuators["player"], ["card"]),
+            "draw": (self._actuators["drawer"], [])
+        }
+        actuator, expected_params = action_actuators.get(action["name"], (None, None))
+        if actuator:
+            args = [action["params"].get(param) for param in expected_params]
+            actuator.act(*args)
     def behave(self):
         percept = self._perceive()
         self._act(percept)
