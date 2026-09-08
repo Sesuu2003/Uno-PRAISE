@@ -1,117 +1,99 @@
-import random
-
 from statebuffer import IStateBuffer
 from environments import SimulatedEnvironment
 
+
+class Card:
+     def __init__(self, value, color):
+          self.value = value
+          self.color = color
+
 class UNOEnvironment(SimulatedEnvironment):
     def __new__(cls):
-            return super().__new__(cls)
+        return super().__new__(cls)
 
     def __init__(self):
-        super(UNOEnvironment, self).__init__()
-        self._agent_ids = []
+        self._agents_locations = {}
         self._hands = {}
-        self._deck = [] #mazo de cartas
-        self._discard_pile = []
-        self._current_player_index = 0 #indice de la lista de agentes. Indica de cual es el turno.
-        self._direction = 1 #sentido de la ronda (1 o -1)
-        self._current_color = None
+        self._discardPile = []
+        self._drawPile = []
+        self._turn = int
 
     def add(self, agent_id: int) -> None:
         super(UNOEnvironment, self).add(agent_id)
-        # añadir al final del index
-        self._agent_ids.append(agent_id)
+        self._agents_locations[agent_id] = 0
 
     def remove(self, agent_id: int) -> None:
         super(UNOEnvironment, self).remove(agent_id)
-        self._agents_ids.pop(agent_id, None)
+        self._agents_locations.pop(agent_id, None)
 
-    #def add_statebuffer(self, agent_id: int, statebuffer: IStateBuffer) -> None:
-    #    super(UNOEnvironment, self).add_statebuffer(agent_id, statebuffer)
-    #    statebuffer.update({"length": self._length, "agent_location": self._location_of(agent_id),
-    #                     "dirt_location": self._dirt_locations})
+    def add_statebuffer(self, agent_id: int, statebuffer: IStateBuffer) -> None:
+        super(UNOEnvironment, self).add_statebuffer(agent_id, statebuffer)
+        statebuffer.update({"agent_location": self._location_of(agent_id),
+                            "hands": self._hands,
+                            "discard_pile": self._discardPile,
+                            "draw_pile": self._drawPile,
+                            "turn": self._turn})
 
-    def remove_statebuffer(self, agent_id: int,statebuffer: IStateBuffer) -> None:
+    def remove_statebuffer(self, agent_id: int, statebuffer: IStateBuffer) -> None:
         super(UNOEnvironment, self).remove_statebuffer(agent_id, statebuffer)
 
-    #def _location_of(self, agent_id: int) -> int:
-    #    return self._agents_locations[agent_id] if agent_id in self._agents_locations else None
+    def _location_of(self, agent_id: int) -> int:
+            return self._agents_locations[agent_id] if agent_id in self._agents_locations else None
+
+    def _top_discard(self) -> Card:
+         return self._discardPile[-1]
 
     def get_property(self, agent_id: int, property_name: str) -> dict:
-        if agent_id in self._agent_ids:
+         if agent_id in self._agents:
             response = {"agent": agent_id}
-
             property_methods = {
-                "hand": self._hands[agent_id],
-                "your_turn": agent_id== self._agent_ids[self._current_player_index],
-                "top_discard": self._discard_pile[-1],
-                "current_color": self._current_color,
-                
+                 "location" : self._location_of
             }
-            
+
             property_method = property_methods.get(property_name)
 
             if property_method:
-                response[property_name] = property_method(agent_id)
+                 response[property_name] = property_method(agent_id)
             else:
-                print(f"Invalid property: {property_name}")
+                 print(f"Invalid property: {property_name}")
 
             return response
-        else:
-            return {}
-        
-    def _play_card(self, agent_id:int, card):
-        #validar carta
-        # mover al descarte
-        # aplicar sus efectos
-        if card.type == "SKIP":
-            self._advance_turn(steps=2)
-        elif card.type == "REVERSE":
-            self._direction *= -1 #cambia el sentido
-            self._advance_turn(steps=1)
-        elif card.type == "+2":
-            self.make_next_draw_cards(2) #id del siguiente jugador
-            self._advance_turn(steps=2)
-        elif card.type == "+4":
-            self.make_next_draw_cards(4) #id del siguiente jugador
-            self._advance_turn(steps=2)
+         else:
+              return {}
 
-        else:
-            self._advance_turn(steps=1)
-        
-    def _make_next_draw_cards(self, amount):
-        next_index = (self._current_player_index + self._direction)
-        next_player = self._agent_ids[next_index]
-        self._draw_card(self, next_player, amount)
-        
-    def _draw_card(self, agent_id:int, amount: int):
-        for i in range(amount):
-            card = self._deck.pop()
-            self._hands[agent_id].append(card)
-        self._advance_turn()
-        
-    def _advance_turn(self, steps: int):
-        self._current_player_index = (self._current_player_index + self._direction)
+    def _make_play(self, agent_id: int, card: Card):
+         #quitar carta de la mano
+
+
+         self._discardPile.append(card)
 
     def take_action(self, agent_id: int, action_name: str, params: dict = {}) -> None:
-        if agent_id in self._agents:
-            action_methods = {
-                "play_card": (self._play_card, ["card"]),
-                "draw_card":(self._draw_card(agent_id)),
-                "declare_color":(self._current_color = params["color"]),
-                "pass":(self._advance_turn())
-            }
-
-            action_method, expected_params = action_methods.get(action_name, (None, None))
-            if action_method:
-                args = [agent_id] + [params.get(param) for param in expected_params]
-                action_method(*args)
-                self._update_statebuffers(agent_id)
-            else:
-                print(f"Invalid action: {action_name}")
+         if agent_id in self._agents:
+              action_methods = {
+                   "play": (self._make_play, [])
+              }
+              action_method, expected_params = action_methods.get(action_name, (None, None))
+              if action_method:
+                   args = [agent_id] + [params.get(param) for param in expected_params]
+                   action_method(*args)
+                   self._update_statebuffers(agent_id)
+              else:
+                   print(f"Invalid action: {action_name}")
 
     def _update_statebuffers(self, agent_id: int):
-        relevant_statebuffers = [entry["statebuffer"] for entry in self._statebuffers if entry["agent_id"] == agent_id]
-        for statebuffer in relevant_statebuffers:
-            statebuffer.update({"length": self._length, "agent_location": self._location_of(agent_id),
-                             "dirt_location": self._dirt_locations})
+         relevant_statebuffers = [entry["statebuffer"] for entry in self._statebuffers if entry["agent_id"] == agent_id]
+         for statebuffer in relevant_statebuffers:
+              statebuffer.update({
+                   "agent_location": self._location_of(agent_id),
+                   "hands": self._hands,
+                   "discard_pile": self._discardPile,
+                   "draw_pile": self._drawPile,
+                   "turn": self._turn})
+
+
+
+
+
+
+
+
