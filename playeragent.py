@@ -1,8 +1,9 @@
 from agents import Agent
 from environments import SimulatedSensor, SimulatedActuator, SimulatedEnvironment
 import uuid
+from UNOworld import Card
 
-# Temporalmente descartada 
+# Temporalmente descartada
 # (¿Es necesario que el agente sepa que es su turno?
 #  ¿o se lo indica el entorno?)
 class TurnSensor(SimulatedSensor):
@@ -13,23 +14,24 @@ class TurnSensor(SimulatedSensor):
 class DiscardPileSensor(SimulatedSensor):
     def sense(self):
         response = self._env.get_property(self._agent.id, property_name="TopDiscard")
-        return response["TopDiscard"]
+        return response["topDiscard"]
 
 class HandSensor(SimulatedSensor):
     def sense(self):
         response = self._env.get_property(self._agent.id, property_name="hand")
         return response["hand"]
 
-class CardDrawer(SimulatedActuator):
+class DrawActuator(SimulatedActuator):
     def act(self):
         self._env.take_action(self._agent.id, "draw")
 
 
-class CardPlayer(SimulatedActuator):
-    def act(self, card):
-        self._env.take_action(self._agent.id, "play", card)
+class PlayActuator(SimulatedActuator):
+    def act(self, card: Card):
+        request_info = {"card": card}
+        self._env.take_action(self._agent.id, "play", request_info)
 
-class TurnPasser(SimulatedActuator):
+class PassActuator(SimulatedActuator):
     def act(self):
         self._env.take_action(self._agent.id, "pass")
 
@@ -61,15 +63,15 @@ class PlayerAgent(Agent):
        hand.agent = self
        self.add_sensor("hand", hand)
 
-       drawer = CardDrawer(env)
+       drawer = DrawActuator(env)
        drawer.agent = self
        self.add_actuator("drawer", drawer)
 
-       player = CardPlayer(env)
+       player = PlayActuator(env)
        player.agent = self
        self.add_actuator("player", player)
 
-       passTurn = TurnPasser(env)
+       passTurn = PassActuator(env)
        passTurn.agent = self
        self.add_actuator("passTurn", passTurn)
 
@@ -78,11 +80,11 @@ class PlayerAgent(Agent):
         mano = percept["hand"]
         card = percept["discardPile"]
         for c in mano:
-            if (card[0] == c[0] or card[1] == c[1]):
+            if (card.value == c.value or card.color == c.color):
                 return c
             else:
                 return None
-            
+
     def function(self, percept):
         action = {}
         card = self.compareCard(self, percept)
@@ -92,7 +94,10 @@ class PlayerAgent(Agent):
         else:
             action["name"] = "draw"
         return action
-                
+
+
+    def print_state(self):
+        print("Me quedan {} cartas".format(len(self._sensors["hand"].sense())))
     def _percecive(self):
         percept = {}
         for sensor in self._sensors:
@@ -103,7 +108,8 @@ class PlayerAgent(Agent):
         action = self.function(percept)
         action_actuators = {
             "play": (self._actuators["player"], ["card"]),
-            "draw": (self._actuators["drawer"], [])
+            "draw": (self._actuators["drawer"], []),
+            "pass": (self.actuators["passTurn"], [])
         }
         actuator, expected_params = action_actuators.get(action["name"], (None, None))
         if actuator:
