@@ -13,7 +13,7 @@ class TurnSensor(SimulatedSensor):
 
 class DiscardPileSensor(SimulatedSensor):
     def sense(self):
-        response = self._env.get_property(self._agent.id, property_name="TopDiscard")
+        response = self._env.get_property(self._agent.id, property_name="topDiscard")
         return response["topDiscard"]
 
 class HandSensor(SimulatedSensor):
@@ -77,17 +77,16 @@ class PlayerAgent(Agent):
 
 
     def compareCard(self, percept):
-        mano = percept["hand"]
+        hand = percept["hand"]
         card = percept["discardPile"]
-        for c in mano:
+        for c in hand:
             if (card.value == c.value or card.color == c.color):
                 return c
-            else:
-                return None
+        return None
 
     def function(self, percept):
         action = {}
-        card = self.compareCard(self, percept)
+        card = self.compareCard(percept)
         if card != None:
             action["name"] = "play"
             action["params"] = {"card": card}
@@ -98,7 +97,8 @@ class PlayerAgent(Agent):
 
     def print_state(self):
         print("Me quedan {} cartas".format(len(self._sensors["hand"].sense())))
-    def _percecive(self):
+
+    def _perceive(self):
         percept = {}
         for sensor in self._sensors:
             percept[sensor] = self._sensors[sensor].sense()
