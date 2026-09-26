@@ -3,6 +3,10 @@ from environments import SimulatedEnvironment
 from enum import Enum, unique
 import random
 
+@unique
+class RoundDirection(Enum):
+    RIGHT = 1
+    LEFT = -1
 
 @unique
 class CardColor(Enum):
@@ -58,12 +62,13 @@ class UNOEnvironment(SimulatedEnvironment):
         self._turn = 1
         self._deck = []
         self._round = 1
+        self._roundDirection = 1
         self._play = ""
         self._create_deck()
-        self._create_drawPile()
+        self._create_drawPile(self._deck)
         self._start_discard_pile()
         self._winner = 0
-        self._maxplayers = maxplayers
+        self._maxplayers = maxplayers #controlar
         self._turns = {}
 
     def add(self, agent_id: int) -> None:
@@ -121,6 +126,8 @@ class UNOEnvironment(SimulatedEnvironment):
         self._hands[agent_id].remove(card)
         self._discardPile.append(card)
         self._play = "played card"
+        if card.value == CardValue.REVERSE:
+            self._roundDirection *= (-1)
         self._next_turn()
 
     def _create_deck(self):
@@ -133,8 +140,8 @@ class UNOEnvironment(SimulatedEnvironment):
             for r in range(4):
                 self._deck.append(Card(wild_value, CardColor.WILD))
 
-    def _create_drawPile(self):
-        self._drawPile = self._deck
+    def _create_drawPile(self, deck):
+        self._drawPile = deck
         random.shuffle(self._drawPile)
 
     def _give_hands(self, agent_id):
@@ -142,16 +149,20 @@ class UNOEnvironment(SimulatedEnvironment):
         for i in range(1,3):
             hand.append(self._drawPile.pop())
         self._hands[agent_id] = hand
+        #respetar orden real
 
     def _start_discard_pile(self):
         self._discardPile.append(self._drawPile.pop())
 
     def _next_turn(self):
-        if self._turn < len(self._turns):
-            self._turn += 1
-        else:
+        if self._turn+self._roundDirection > len(self._turns):
             self._turn = 1
-            self._round += 1
+        elif self._turn+self._roundDirection < 1:
+            self._turn = len(self._turns)
+        else:
+            self._turn += self._roundDirection
+
+
 
     def _pass_turn(self, agent_id):
         self._play = "pass"
