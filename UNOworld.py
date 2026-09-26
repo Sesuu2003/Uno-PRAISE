@@ -193,7 +193,7 @@ class UNOEnvironment(SimulatedEnvironment):
     def take_action(self, agent_id: int, action_name: str, params: dict = {}) -> None:
         if agent_id in self._agents and self.check_turn(agent_id):
             action_methods = {
-                "play": (self._make_play, ["card"]),
+                "play": (self._make_play, ["card", "colorChoice"]),
                 "pass": (self._pass_turn, []),
                 "draw": (self._draw_card, [])
             }

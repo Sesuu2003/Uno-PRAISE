@@ -1,7 +1,8 @@
 from agents import Agent
 from environments import SimulatedSensor, SimulatedActuator, SimulatedEnvironment
 import uuid
-from UNOworld import Card
+from UNOworld import Card, CardValue, CardColor
+import random
 
 # Temporalmente descartada
 # (¿Es necesario que el agente sepa que es su turno?
@@ -27,23 +28,14 @@ class DrawActuator(SimulatedActuator):
 
 
 class PlayActuator(SimulatedActuator):
-    def act(self, card: Card):
-        request_info = {"card": card}
+    def act(self, card: Card, colorChoice: CardColor):
+        request_info = {"card": card, "colorChoice": colorChoice }
         self._env.take_action(self._agent.id, "play", request_info)
 
 class PassActuator(SimulatedActuator):
     def act(self):
         self._env.take_action(self._agent.id, "pass")
 
-
-
-from enum import Enum, unique
-@unique
-class CardColor(Enum):
-    RED = 1
-    BLUE = 2
-    GREEN = 3
-    YELLOW = 4
 
 class ColorDeclarer(SimulatedActuator):
     def act(self, color: CardColor):
@@ -84,12 +76,17 @@ class PlayerAgent(Agent):
                 return c
         return None
 
+    def chooseColor(self):
+        return random.choice(list(CardColor)[:-1])
+
     def function(self, percept):
         action = {}
         card = self.compareCard(percept)
         if card != None:
             action["name"] = "play"
             action["params"] = {"card": card}
+            if card.value == CardValue.DRAW_FOUR or card.value == CardValue.WILD_CARD:
+                action["params"]["colorChoice"] = self.chooseColor()
         else:
             action["name"] = "draw"
         return action
@@ -107,7 +104,7 @@ class PlayerAgent(Agent):
     def _act(self, percept):
         action = self.function(percept)
         action_actuators = {
-            "play": (self._actuators["player"], ["card"]),
+            "play": (self._actuators["player"], ["card", "colorChoice"]),
             "draw": (self._actuators["drawer"], []),
             "pass": (self.actuators["passTurn"], [])
         }
